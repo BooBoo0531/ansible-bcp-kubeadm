@@ -1,0 +1,11 @@
+---
+- name: Install cert-manager
+  ansible.builtin.command: >
+    kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.21.2/cert-manager.yaml
+  register: cert_mgr
+  changed_when: "'created' in cert_mgr.stdout or 'configured' in cert_mgr.stdout"
+
+- name: Wait for cert-manager webhook to be available
+  ansible.builtin.command: >
+    kubectl --kubeconfig=/etc/kubernetes/admin.conf wait --for=condition=Available deployment/cert-manager-webhook -n cert-manager --timeout=300s
+  changed_when: false

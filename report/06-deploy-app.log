@@ -1,0 +1,34 @@
+# Command: ansible-playbook playbooks/06-deploy-app.yml
+# Date:    2026-11-09 14:04:41 +0700
+
+/usr/lib/python3/dist-packages/paramiko/pkey.py:82: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+  "cipher": algorithms.TripleDES,
+/usr/lib/python3/dist-packages/paramiko/transport.py:261: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+  "class": algorithms.TripleDES,
+
+PLAY [Deploy Nginx application and configure Gateway API] **********************
+
+TASK [gateway_api : Install Envoy Gateway and Gateway API CRDs] ****************
+ok: [cp1]
+
+TASK [cert_manager : Install cert-manager] *************************************
+changed: [cp1]
+
+TASK [cert_manager : Wait for cert-manager webhook to be available] ************
+ok: [cp1]
+
+TASK [nginx_app : Create directory for application manifests] ******************
+ok: [cp1]
+
+TASK [nginx_app : Render manifest from template] *******************************
+ok: [cp1]
+
+TASK [nginx_app : Deploy application and Gateway] ******************************
+changed: [cp1]
+
+TASK [nginx_app : Wait for Nginx deployment rollout to complete] ***************
+ok: [cp1]
+
+PLAY RECAP *********************************************************************
+cp1                        : ok=7    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+

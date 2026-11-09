@@ -1,0 +1,56 @@
+---
+cluster_name: soc-mse-k8s
+
+kubernetes_version: "1.37.1"
+kubernetes_minor: "v1.37"
+pod_cidr: "10.10.0.0/16"
+
+control_plane_endpoint: "192.168.122.200:8443"
+
+cluster_nodes:
+  - name: cp1
+    ip: 192.168.122.244
+  - name: cp2
+    ip: 192.168.122.47
+  - name: cp3
+    ip: 192.168.122.76
+
+required_packages:
+  - curl
+  - ca-certificates
+  - gnupg
+  - apt-transport-https
+  - conntrack
+  - socat
+  - ebtables
+  - ethtool
+  - iproute2
+  - iptables
+  - containerd
+
+haproxy_port: "8443"
+vip_address: "192.168.122.200"
+vip_interface: "enp1s0"
+
+kubeconfig: /etc/kubernetes/admin.conf
+
+app_namespace: default
+app_deployment: nginx-hello-soc-mse
+app_label: app=nginx-hello
+app_replicas: 2
+app_hostname: hello.soc-mse.local
+# Fixed NodePort of the Envoy Gateway Service (HTTPS listener 443)
+gateway_nodeport: 30443
+app_expected_text: Hello SOC-MSE
+
+# etcdctl/etcdutl client version, must match the etcd image used by kubeadm
+etcd_version: "v3.7.0"
+etcdctl_env:
+  ETCDCTL_ENDPOINTS: https://127.0.0.1:2379
+  ETCDCTL_CACERT: /etc/kubernetes/pki/etcd/ca.crt
+  ETCDCTL_CERT: /etc/kubernetes/pki/etcd/server.crt
+  ETCDCTL_KEY: /etc/kubernetes/pki/etcd/server.key
+
+# Backups are written on each node first, then fetched to backup/<timestamp>/<node>/
+backup_remote_dir: /opt/k8s-backup
+backup_local_dir: "{{ playbook_dir }}/../backup"

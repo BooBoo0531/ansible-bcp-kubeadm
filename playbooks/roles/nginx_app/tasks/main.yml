@@ -1,0 +1,28 @@
+---
+- name: Create directory for application manifests
+  ansible.builtin.file:
+    path: /opt/kubernetes-manifests/app
+    state: directory
+    mode: "0755"
+
+- name: Render manifest from template
+  ansible.builtin.template:
+    src: nginx-hello.yaml.j2
+    dest: /opt/kubernetes-manifests/app/nginx-hello.yaml
+    mode: "0644"
+
+# Retry because the cert-manager webhook may reject Issuer/Certificate
+# until its CA bundle has been injected
+- name: Deploy application and Gateway
+  ansible.builtin.command: >
+    kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f /opt/kubernetes-manifests/app/nginx-hello.yaml
+  register: app_deploy
+  changed_when: "'created' in app_deploy.stdout or 'configured' in app_deploy.stdout"
+  retries: 6
+  delay: 10
+  until: app_deploy.rc == 0
+
+- name: Wait for Nginx deployment rollout to complete
+  ansible.builtin.command: >
+    kubectl --kubeconfig=/etc/kubernetes/admin.conf rollout status deployment/nginx-hello-soc-mse -n default --timeout=120s
+  changed_when: false

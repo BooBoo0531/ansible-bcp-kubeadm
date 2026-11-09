@@ -1,0 +1,12 @@
+---
+- name: Deploy Nginx application and configure Gateway API
+  hosts: cp1
+  become: true
+  gather_facts: false
+  vars_files:
+    - ../group_vars/all.yml
+
+  roles:
+    - gateway_api
+    - cert_manager
+    - nginx_app

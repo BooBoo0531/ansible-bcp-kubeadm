@@ -1,0 +1,116 @@
+---
+# Verify the application after the etcd restore:
+# the Deployment exists, 2 pods are Running and the Gateway returns the expected page.
+- name: Verify application after etcd restore
+  hosts: cp1
+  become: true
+  gather_facts: false
+  vars_files:
+    - ../group_vars/all.yml
+
+  tasks:
+    - name: Wait for Deployment {{ app_deployment }} to exist
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - --kubeconfig={{ kubeconfig }}
+          - get
+          - deployment
+          - "{{ app_deployment }}"
+          - -n
+          - "{{ app_namespace }}"
+      register: deployment_check
+      changed_when: false
+      retries: 12
+      delay: 5
+      until: deployment_check.rc == 0
+
+    - name: Wait for Deployment rollout to complete
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - --kubeconfig={{ kubeconfig }}
+          - rollout
+          - status
+          - deployment/{{ app_deployment }}
+          - -n
+          - "{{ app_namespace }}"
+          - --timeout=60s
+      register: rollout_status
+      changed_when: false
+      retries: 5
+      delay: 10
+      until: rollout_status.rc == 0
+
+    # Right after a restore, Deployment and pod status still come from the snapshot,
+    # while kubelet recreates the pod sandboxes with new IPs. The end-to-end request
+    # only succeeds once the app is really serving, so wait on it before reading status.
+    - name: Check the application through the Gateway
+      ansible.builtin.include_tasks: tasks/curl-gateway.yml
+      vars:
+        curl_wait_for_app: true
+
+    - name: Get Deployment ready replicas
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - --kubeconfig={{ kubeconfig }}
+          - get
+          - deployment
+          - "{{ app_deployment }}"
+          - -n
+          - "{{ app_namespace }}"
+          - -o
+          - jsonpath={.status.readyReplicas}
+      register: ready_replicas
+      changed_when: false
+
+    - name: Get Running application pods
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - --kubeconfig={{ kubeconfig }}
+          - get
+          - pods
+          - -n
+          - "{{ app_namespace }}"
+          - -l
+          - "{{ app_label }}"
+          - --field-selector=status.phase=Running
+          - -o
+          - name
+      register: running_pods
+      changed_when: false
+
+    - name: Collect application resources
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - --kubeconfig={{ kubeconfig }}
+          - get
+          - deployment,replicaset,pods,service,configmap,certificate,gateway,httproute
+          - -n
+          - "{{ app_namespace }}"
+          - -o
+          - wide
+      register: app_resources
+      changed_when: false
+
+    - name: Show application resources
+      ansible.builtin.debug:
+        var: app_resources.stdout_lines
+
+    - name: Verify Deployment, pods and HTTP response
+      ansible.builtin.assert:
+        that:
+          - ready_replicas.stdout | int == app_replicas
+          - running_pods.stdout_lines | length == app_replicas
+          - app_expected_text in curl_result.stdout
+          - "'HTTP_CODE=200' in curl_result.stdout"
+        fail_msg: >-
+          Verification failed: readyReplicas={{ ready_replicas.stdout }},
+          running pods={{ running_pods.stdout_lines | length }},
+          curl={{ curl_result.stdout_lines }}
+        success_msg: >-
+          PASS: Deployment {{ app_deployment }} exists, {{ running_pods.stdout_lines | length }} pods Running,
+          curl returned '{{ app_expected_text }}'

@@ -1,0 +1,225 @@
+---
+# Restore the 3-member stacked etcd cluster from a snapshot taken by 07-backup.yml.
+#
+#   ansible-playbook playbooks/09-restore.yml                       # latest backup
+#   ansible-playbook playbooks/09-restore.yml -e backup_ts=<YYYYmmdd-HHMMSS>
+#
+# Every member is restored from the same snapshot with a new cluster token,
+# while all kube-apiservers are stopped, following the Kubernetes etcd restore guide.
+- name: Restore etcd from snapshot on all control-plane nodes
+  hosts: control_plane
+  become: true
+  gather_facts: false
+  vars_files:
+    - ../group_vars/all.yml
+
+  vars:
+    restore_ts: "{{ backup_ts | default(lookup('ansible.builtin.pipe', 'ls -1 ' ~ backup_local_dir ~ ' | sort | tail -n 1')) }}"
+    snapshot_local: "{{ backup_local_dir }}/{{ restore_ts }}/cp1/etcd-snapshot.db"
+    snapshot_remote: "{{ backup_remote_dir }}/restore/etcd-snapshot.db"
+    node_ip: "{{ (cluster_nodes | selectattr('name', 'equalto', inventory_hostname) | first).ip }}"
+    etcd_initial_cluster: >-
+      {% for node in cluster_nodes %}{{ node.name }}=https://{{ node.ip }}:2380{{ '' if loop.last else ',' }}{% endfor %}
+    manifests_dir: /etc/kubernetes/manifests
+    manifests_stopped_dir: /etc/kubernetes/manifests-stopped
+    control_plane_components:
+      - kube-apiserver
+      - kube-controller-manager
+      - kube-scheduler
+    control_plane_ports:
+      - 6443  # kube-apiserver
+      - 10257 # kube-controller-manager
+      - 10259 # kube-scheduler
+      - 2379  # etcd client
+
+  pre_tasks:
+    - name: Check the selected backup
+      ansible.builtin.stat:
+        path: "{{ snapshot_local }}"
+      delegate_to: localhost
+      become: false
+      run_once: true
+      register: snapshot_local_stat
+
+    - name: Fail if the snapshot does not exist
+      ansible.builtin.assert:
+        that:
+          - restore_ts is match('^[0-9]{8}-[0-9]{6}$')
+          - snapshot_local_stat.stat.exists
+        fail_msg: "Snapshot not found: {{ snapshot_local }}"
+        success_msg: "Restoring from backup {{ restore_ts }}"
+      run_once: true
+
+    - name: Verify snapshot checksum on the control node
+      ansible.builtin.command:
+        cmd: sha256sum -c SHA256SUMS
+        chdir: "{{ snapshot_local | dirname }}"
+      delegate_to: localhost
+      become: false
+      run_once: true
+      changed_when: false
+
+    - name: Generate restore timestamp
+      ansible.builtin.set_fact:
+        restore_run_ts: "{{ lookup('ansible.builtin.pipe', 'date +%Y%m%d-%H%M%S') }}"
+      run_once: true
+
+  roles:
+    - etcd_client
+
+  tasks:
+    - name: Create restore directory
+      ansible.builtin.file:
+        path: "{{ snapshot_remote | dirname }}"
+        state: directory
+        mode: "0700"
+
+    - name: Copy snapshot to every control-plane node
+      ansible.builtin.copy:
+        src: "{{ snapshot_local }}"
+        dest: "{{ snapshot_remote }}"
+        mode: "0600"
+
+    - name: Verify snapshot on every node
+      ansible.builtin.command:
+        argv: [etcdutl, snapshot, status, "{{ snapshot_remote }}", -w, table]
+      register: snapshot_status
+      changed_when: false
+
+    - name: Show snapshot to be restored
+      ansible.builtin.debug:
+        var: snapshot_status.stdout_lines
+      run_once: true
+
+    # Moving a static pod manifest out of the manifests directory makes kubelet stop that pod
+    - name: Create directory for stopped static pod manifests
+      ansible.builtin.file:
+        path: "{{ manifests_stopped_dir }}"
+        state: directory
+        mode: "0700"
+
+    - name: Stop kube-apiserver, controller-manager, scheduler and etcd
+      ansible.builtin.command:
+        cmd: mv {{ manifests_dir }}/{{ item }}.yaml {{ manifests_stopped_dir }}/{{ item }}.yaml
+        removes: "{{ manifests_dir }}/{{ item }}.yaml"
+      loop: "{{ control_plane_components + ['etcd'] }}"
+
+    - name: Wait for control-plane components to stop
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: "{{ item }}"
+        state: stopped
+        timeout: 180
+      loop: "{{ control_plane_ports }}"
+
+    - name: Move current etcd data directory aside
+      ansible.builtin.command:
+        cmd: mv /var/lib/etcd /var/lib/etcd.before-restore-{{ restore_run_ts }}
+        removes: /var/lib/etcd
+
+    - name: Restore etcd data directory from snapshot
+      ansible.builtin.command:
+        argv:
+          - etcdutl
+          - snapshot
+          - restore
+          - "{{ snapshot_remote }}"
+          - --name={{ inventory_hostname }}
+          - --initial-cluster={{ etcd_initial_cluster }}
+          - --initial-cluster-token=etcd-restore-{{ restore_run_ts }}
+          - --initial-advertise-peer-urls=https://{{ node_ip }}:2380
+          - --data-dir=/var/lib/etcd
+          # Move revisions forward so API server watch caches and informers re-list
+          - --bump-revision=1000000000
+          - --mark-compacted
+      register: etcd_restore
+      changed_when: true
+
+    - name: Start etcd
+      ansible.builtin.command:
+        cmd: mv {{ manifests_stopped_dir }}/etcd.yaml {{ manifests_dir }}/etcd.yaml
+        removes: "{{ manifests_stopped_dir }}/etcd.yaml"
+
+    # The etcd manifest comes back unchanged (same static pod UID). If kubelet is
+    # still finishing the old pod's termination, it ignores the re-added manifest
+    # and never starts etcd. Restarting kubelet makes it re-read the manifests.
+    - name: Restart kubelet so it starts the etcd static pod
+      ansible.builtin.systemd:
+        name: kubelet
+        state: restarted
+
+    - name: Wait for etcd client port
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: 2379
+        state: started
+        timeout: 300
+
+    - name: Wait for the restored etcd cluster to become healthy
+      ansible.builtin.command: etcdctl endpoint health --cluster
+      environment: "{{ etcdctl_env }}"
+      register: etcd_health
+      changed_when: false
+      retries: 30
+      delay: 5
+      until: etcd_health.rc == 0
+      run_once: true
+
+    - name: Start kube-apiserver, controller-manager and scheduler
+      ansible.builtin.command:
+        cmd: mv {{ manifests_stopped_dir }}/{{ item }}.yaml {{ manifests_dir }}/{{ item }}.yaml
+        removes: "{{ manifests_stopped_dir }}/{{ item }}.yaml"
+      loop: "{{ control_plane_components }}"
+
+    - name: Restart kubelet so it does not keep stale state
+      ansible.builtin.systemd:
+        name: kubelet
+        state: restarted
+
+    - name: Wait for the Kubernetes API to be ready
+      ansible.builtin.command: kubectl --kubeconfig={{ kubeconfig }} get --raw=/readyz
+      register: api_ready
+      changed_when: false
+      retries: 36
+      delay: 5
+      until: api_ready.rc == 0
+
+    # While the API servers are down, kube-proxy sees the kubernetes Service lose all
+    # endpoints and rejects traffic to its ClusterIP (10.96.0.1). Its watches can then
+    # fail (RBAC not loaded yet) and it keeps that stale view, which breaks the Calico
+    # CNI and every in-cluster API client. Calico Felix, which reaches the API through
+    # 10.96.0.1, then misses new pods and never programs their routes.
+    # Restart the API watchers in dependency order so they re-list.
+    - name: Restart kube-proxy, calico-node and CoreDNS so they reload the restored state
+      ansible.builtin.shell: |
+        kubectl --kubeconfig={{ kubeconfig }} -n kube-system rollout restart {{ item }}
+        kubectl --kubeconfig={{ kubeconfig }} -n kube-system rollout status {{ item }} --timeout=300s
+      loop:
+        - daemonset/kube-proxy
+        - daemonset/calico-node
+        - deployment/coredns
+      changed_when: true
+      run_once: true
+
+    - name: Collect etcd and cluster status after restore
+      ansible.builtin.shell: |
+        echo "## etcd endpoint health"
+        etcdctl endpoint health --cluster -w table
+        echo
+        echo "## etcd endpoint status"
+        etcdctl endpoint status --cluster -w table
+        echo
+        echo "## etcd members"
+        etcdctl member list -w table
+        echo
+        echo "## Nodes"
+        kubectl --kubeconfig={{ kubeconfig }} get nodes -o wide
+      environment: "{{ etcdctl_env }}"
+      register: restore_status
+      changed_when: false
+      run_once: true
+
+    - name: Show status after restore
+      ansible.builtin.debug:
+        var: restore_status.stdout_lines
+      run_once: true

@@ -1,0 +1,8 @@
+---
+# Envoy Gateway's install.yaml already bundles the Gateway API CRDs,
+# so they are not installed separately (doing so causes server-side apply conflicts)
+- name: Install Envoy Gateway and Gateway API CRDs
+  ansible.builtin.command: >
+    kubectl --kubeconfig=/etc/kubernetes/admin.conf apply --server-side -f https://github.com/envoyproxy/gateway/releases/download/v1.9.2/install.yaml
+  register: envoy_gw
+  changed_when: "'created' in envoy_gw.stdout or 'configured' in envoy_gw.stdout"

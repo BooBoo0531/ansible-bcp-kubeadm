@@ -1,0 +1,101 @@
+# Command: ansible-playbook playbooks/02-install-k8s.yml
+# Date:    2026-11-09 14:03:22 +0700
+
+/usr/lib/python3/dist-packages/paramiko/pkey.py:82: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+  "cipher": algorithms.TripleDES,
+/usr/lib/python3/dist-packages/paramiko/transport.py:261: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+  "class": algorithms.TripleDES,
+
+PLAY [Install Kubernetes packages] *********************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [cp1]
+ok: [cp3]
+ok: [cp2]
+
+TASK [Create APT keyring directory] ********************************************
+ok: [cp2]
+ok: [cp3]
+ok: [cp1]
+
+TASK [Download Kubernetes repository signing key] ******************************
+ok: [cp3]
+ok: [cp1]
+ok: [cp2]
+
+TASK [Install Kubernetes repository signing key] *******************************
+ok: [cp3]
+ok: [cp1]
+ok: [cp2]
+
+TASK [Add Kubernetes APT repository] *******************************************
+ok: [cp1]
+ok: [cp3]
+ok: [cp2]
+
+TASK [Install kubelet kubeadm and kubectl] *************************************
+ok: [cp3]
+ok: [cp1]
+ok: [cp2]
+
+TASK [Hold Kubernetes package versions] ****************************************
+ok: [cp3] => (item=kubelet)
+ok: [cp2] => (item=kubelet)
+ok: [cp1] => (item=kubelet)
+ok: [cp3] => (item=kubeadm)
+ok: [cp2] => (item=kubeadm)
+ok: [cp1] => (item=kubeadm)
+ok: [cp3] => (item=kubectl)
+ok: [cp2] => (item=kubectl)
+ok: [cp1] => (item=kubectl)
+
+TASK [Enable kubelet] **********************************************************
+ok: [cp3]
+ok: [cp1]
+ok: [cp2]
+
+TASK [Verify installed Kubernetes versions] ************************************
+ok: [cp1] => (item=kubeadm version -o short)
+ok: [cp3] => (item=kubeadm version -o short)
+ok: [cp2] => (item=kubeadm version -o short)
+ok: [cp1] => (item=kubelet --version)
+ok: [cp3] => (item=kubelet --version)
+ok: [cp2] => (item=kubelet --version)
+ok: [cp1] => (item=kubectl version --client)
+ok: [cp2] => (item=kubectl version --client)
+ok: [cp3] => (item=kubectl version --client)
+
+TASK [Show installed versions] *************************************************
+ok: [cp1] => (item={'changed': False, 'stdout': 'v1.37.1', 'stderr': '', 'rc': 0, 'cmd': ['kubeadm', 'version', '-o', 'short'], 'start': '2026-11-09 07:03:45.207553', 'end': '2026-11-09 07:03:45.493015', 'delta': '0:00:00.285462', 'msg': '', 'invocation': {'module_args': {'_raw_params': 'kubeadm version -o short', '_uses_shell': False, 'expand_argument_vars': True, 'stdin_add_newline': True, 'strip_empty_ends': True, 'argv': None, 'chdir': None, 'executable': None, 'creates': None, 'removes': None, 'stdin': None}}, 'stdout_lines': ['v1.37.1'], 'stderr_lines': [], 'failed': False, 'item': 'kubeadm version -o short', 'ansible_loop_var': 'item'}) => {
+    "msg": "cp1: v1.37.1"
+}
+ok: [cp1] => (item={'changed': False, 'stdout': 'Kubernetes v1.37.1', 'stderr': '', 'rc': 0, 'cmd': ['kubelet', '--version'], 'start': '2026-11-09 07:03:46.225727', 'end': '2026-11-09 07:03:46.463958', 'delta': '0:00:00.238231', 'msg': '', 'invocation': {'module_args': {'_raw_params': 'kubelet --version', '_uses_shell': False, 'expand_argument_vars': True, 'stdin_add_newline': True, 'strip_empty_ends': True, 'argv': None, 'chdir': None, 'executable': None, 'creates': None, 'removes': None, 'stdin': None}}, 'stdout_lines': ['Kubernetes v1.37.1'], 'stderr_lines': [], 'failed': False, 'item': 'kubelet --version', 'ansible_loop_var': 'item'}) => {
+    "msg": "cp1: Kubernetes v1.37.1"
+}
+ok: [cp2] => (item={'changed': False, 'stdout': 'v1.37.1', 'stderr': '', 'rc': 0, 'cmd': ['kubeadm', 'version', '-o', 'short'], 'start': '2026-11-09 07:03:45.161779', 'end': '2026-11-09 07:03:45.459448', 'delta': '0:00:00.297669', 'msg': '', 'invocation': {'module_args': {'_raw_params': 'kubeadm version -o short', '_uses_shell': False, 'expand_argument_vars': True, 'stdin_add_newline': True, 'strip_empty_ends': True, 'argv': None, 'chdir': None, 'executable': None, 'creates': None, 'removes': None, 'stdin': None}}, 'stdout_lines': ['v1.37.1'], 'stderr_lines': [], 'failed': False, 'item': 'kubeadm version -o short', 'ansible_loop_var': 'item'}) => {
+    "msg": "cp2: v1.37.1"
+}
+ok: [cp1] => (item={'changed': False, 'stdout': 'Client Version: v1.37.1\nKustomize Version: v5.8.1', 'stderr': '', 'rc': 0, 'cmd': ['kubectl', 'version', '--client'], 'start': '2026-11-09 07:03:47.189324', 'end': '2026-11-09 07:03:47.533948', 'delta': '0:00:00.344624', 'msg': '', 'invocation': {'module_args': {'_raw_params': 'kubectl version --client', '_uses_shell': False, 'expand_argument_vars': True, 'stdin_add_newline': True, 'strip_empty_ends': True, 'argv': None, 'chdir': None, 'executable': None, 'creates': None, 'removes': None, 'stdin': None}}, 'stdout_lines': ['Client Version: v1.37.1', 'Kustomize Version: v5.8.1'], 'stderr_lines': [], 'failed': False, 'item': 'kubectl version --client', 'ansible_loop_var': 'item'}) => {
+    "msg": "cp1: Client Version: v1.37.1\nKustomize Version: v5.8.1"
+}
+ok: [cp2] => (item={'changed': False, 'stdout': 'Kubernetes v1.37.1', 'stderr': '', 'rc': 0, 'cmd': ['kubelet', '--version'], 'start': '2026-11-09 07:03:46.231439', 'end': '2026-11-09 07:03:46.479990', 'delta': '0:00:00.248551', 'msg': '', 'invocation': {'module_args': {'_raw_params': 'kubelet --version', '_uses_shell': False, 'expand_argument_vars': True, 'stdin_add_newline': True, 'strip_empty_ends': True, 'argv': None, 'chdir': None, 'executable': None, 'creates': None, 'removes': None, 'stdin': None}}, 'stdout_lines': ['Kubernetes v1.37.1'], 'stderr_lines': [], 'failed': False, 'item': 'kubelet --version', 'ansible_loop_var': 'item'}) => {
+    "msg": "cp2: Kubernetes v1.37.1"
+}
+ok: [cp3] => (item={'changed': False, 'stdout': 'v1.37.1', 'stderr': '', 'rc': 0, 'cmd': ['kubeadm', 'version', '-o', 'short'], 'start': '2026-11-09 07:03:45.211090', 'end': '2026-11-09 07:03:45.483269', 'delta': '0:00:00.272179', 'msg': '', 'invocation': {'module_args': {'_raw_params': 'kubeadm version -o short', '_uses_shell': False, 'expand_argument_vars': True, 'stdin_add_newline': True, 'strip_empty_ends': True, 'argv': None, 'chdir': None, 'executable': None, 'creates': None, 'removes': None, 'stdin': None}}, 'stdout_lines': ['v1.37.1'], 'stderr_lines': [], 'failed': False, 'item': 'kubeadm version -o short', 'ansible_loop_var': 'item'}) => {
+    "msg": "cp3: v1.37.1"
+}
+ok: [cp2] => (item={'changed': False, 'stdout': 'Client Version: v1.37.1\nKustomize Version: v5.8.1', 'stderr': '', 'rc': 0, 'cmd': ['kubectl', 'version', '--client'], 'start': '2026-11-09 07:03:47.176914', 'end': '2026-11-09 07:03:47.521843', 'delta': '0:00:00.344929', 'msg': '', 'invocation': {'module_args': {'_raw_params': 'kubectl version --client', '_uses_shell': False, 'expand_argument_vars': True, 'stdin_add_newline': True, 'strip_empty_ends': True, 'argv': None, 'chdir': None, 'executable': None, 'creates': None, 'removes': None, 'stdin': None}}, 'stdout_lines': ['Client Version: v1.37.1', 'Kustomize Version: v5.8.1'], 'stderr_lines': [], 'failed': False, 'item': 'kubectl version --client', 'ansible_loop_var': 'item'}) => {
+    "msg": "cp2: Client Version: v1.37.1\nKustomize Version: v5.8.1"
+}
+ok: [cp3] => (item={'changed': False, 'stdout': 'Kubernetes v1.37.1', 'stderr': '', 'rc': 0, 'cmd': ['kubelet', '--version'], 'start': '2026-11-09 07:03:46.163589', 'end': '2026-11-09 07:03:46.505656', 'delta': '0:00:00.342067', 'msg': '', 'invocation': {'module_args': {'_raw_params': 'kubelet --version', '_uses_shell': False, 'expand_argument_vars': True, 'stdin_add_newline': True, 'strip_empty_ends': True, 'argv': None, 'chdir': None, 'executable': None, 'creates': None, 'removes': None, 'stdin': None}}, 'stdout_lines': ['Kubernetes v1.37.1'], 'stderr_lines': [], 'failed': False, 'item': 'kubelet --version', 'ansible_loop_var': 'item'}) => {
+    "msg": "cp3: Kubernetes v1.37.1"
+}
+ok: [cp3] => (item={'changed': False, 'stdout': 'Client Version: v1.37.1\nKustomize Version: v5.8.1', 'stderr': '', 'rc': 0, 'cmd': ['kubectl', 'version', '--client'], 'start': '2026-11-09 07:03:47.232493', 'end': '2026-11-09 07:03:47.573230', 'delta': '0:00:00.340737', 'msg': '', 'invocation': {'module_args': {'_raw_params': 'kubectl version --client', '_uses_shell': False, 'expand_argument_vars': True, 'stdin_add_newline': True, 'strip_empty_ends': True, 'argv': None, 'chdir': None, 'executable': None, 'creates': None, 'removes': None, 'stdin': None}}, 'stdout_lines': ['Client Version: v1.37.1', 'Kustomize Version: v5.8.1'], 'stderr_lines': [], 'failed': False, 'item': 'kubectl version --client', 'ansible_loop_var': 'item'}) => {
+    "msg": "cp3: Client Version: v1.37.1\nKustomize Version: v5.8.1"
+}
+
+PLAY RECAP *********************************************************************
+cp1                        : ok=10   changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+cp2                        : ok=10   changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+cp3                        : ok=10   changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+

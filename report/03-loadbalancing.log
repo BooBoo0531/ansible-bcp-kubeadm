@@ -1,0 +1,82 @@
+# Command: ansible-playbook playbooks/03-loadbalancing.yml
+# Date:    2026-11-09 14:03:48 +0700
+
+/usr/lib/python3/dist-packages/paramiko/pkey.py:82: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+  "cipher": algorithms.TripleDES,
+/usr/lib/python3/dist-packages/paramiko/transport.py:261: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+  "class": algorithms.TripleDES,
+
+PLAY [Configure HAProxy and Keepalived for Kubernetes API] *********************
+
+TASK [Gathering Facts] *********************************************************
+ok: [cp1]
+ok: [cp3]
+ok: [cp2]
+
+TASK [haproxy : Install HAProxy] ***********************************************
+ok: [cp3]
+ok: [cp2]
+ok: [cp1]
+
+TASK [haproxy : Configure HAProxy backend for Kubernetes Control Plane] ********
+ok: [cp3]
+ok: [cp1]
+ok: [cp2]
+
+TASK [haproxy : Enable and start HAProxy] **************************************
+ok: [cp1]
+ok: [cp3]
+ok: [cp2]
+
+TASK [haproxy : Apply HAProxy configuration immediately] ***********************
+
+TASK [haproxy : Apply HAProxy configuration immediately] ***********************
+
+TASK [haproxy : Apply HAProxy configuration immediately] ***********************
+
+TASK [haproxy : Verify HAProxy service] ****************************************
+ok: [cp3]
+ok: [cp1]
+ok: [cp2]
+
+TASK [haproxy : Show HAProxy status] *******************************************
+ok: [cp1] => {
+    "msg": "HAProxy status: active"
+}
+ok: [cp2] => {
+    "msg": "HAProxy status: active"
+}
+ok: [cp3] => {
+    "msg": "HAProxy status: active"
+}
+
+TASK [keepalived : Install Keepalived] *****************************************
+ok: [cp1]
+ok: [cp3]
+ok: [cp2]
+
+TASK [keepalived : Create Keepalived configuration directory] ******************
+ok: [cp1]
+ok: [cp2]
+ok: [cp3]
+
+TASK [keepalived : Deploy HAProxy check script] ********************************
+ok: [cp1]
+ok: [cp2]
+ok: [cp3]
+
+TASK [keepalived : Configure Keepalived] ***************************************
+ok: [cp1]
+ok: [cp3]
+ok: [cp2]
+
+TASK [keepalived : Enable and start Keepalived] ********************************
+ok: [cp1]
+ok: [cp3]
+ok: [cp2]
+
+PLAY RECAP *********************************************************************
+cp1                        : ok=11   changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+cp2                        : ok=11   changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+cp3                        : ok=11   changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+

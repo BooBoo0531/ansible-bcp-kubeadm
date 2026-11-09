@@ -1,0 +1,30 @@
+---
+# Send an HTTPS request to the application through the Envoy Gateway.
+# The Envoy Service uses externalTrafficPolicy: Cluster and a fixed NodePort
+# (EnvoyProxy "nodeport-proxy"), so the request goes through the API VIP and
+# keeps working whichever node holds the VIP or runs the Envoy proxy pod.
+- name: Curl https://{{ app_hostname }} through the Gateway
+  ansible.builtin.command:
+    argv:
+      - curl
+      - -sk
+      - --max-time
+      - "10"
+      - -w
+      - "\nHTTP_CODE=%{http_code}"
+      - --resolve
+      - "{{ app_hostname }}:{{ gateway_nodeport }}:{{ vip_address }}"
+      - "https://{{ app_hostname }}:{{ gateway_nodeport }}/"
+  register: curl_result
+  changed_when: false
+  failed_when: false
+  # With curl_wait_for_app, keep retrying until Envoy has picked up the current pod endpoints
+  retries: 18
+  delay: 10
+  until: not (curl_wait_for_app | default(false)) or app_expected_text in curl_result.stdout
+
+- name: Show curl result
+  ansible.builtin.debug:
+    msg:
+      - "curl -k --resolve {{ app_hostname }}:{{ gateway_nodeport }}:{{ vip_address }} https://{{ app_hostname }}:{{ gateway_nodeport }}/"
+      - "{{ curl_result.stdout_lines }}"

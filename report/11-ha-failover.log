@@ -1,0 +1,42 @@
+[2026-11-09 15:32:25] === Initial state ===
+[2026-11-09 15:32:28] VIP 192.168.122.200 is on cp1
+curl https://hello.soc-mse.local:30443 via 192.168.122.200 -> <h1>Hello SOC-MSE</h1>
+ HTTP=200
+
+[2026-11-09 15:32:28] === Scenario: stop keepalived on cp1 ===
+[2026-11-09 15:32:30] keepalived stopped on cp1
+[2026-11-09 15:32:32] VIP 192.168.122.200 is on cp2
+[2026-11-09 15:32:32] Kubernetes API through the VIP:
+cp3 | CHANGED | rc=0 >>
+https://192.168.122.200:8443
+NAME   STATUS   ROLES           AGE   VERSION
+cp1    Ready    control-plane   27d   v1.37.1
+cp2    Ready    control-plane   27d   v1.37.1
+cp3    Ready    control-plane   27d   v1.37.1
+[2026-11-09 15:32:33] Application through the VIP:
+curl https://hello.soc-mse.local:30443 via 192.168.122.200 -> <h1>Hello SOC-MSE</h1>
+ HTTP=200
+[2026-11-09 15:32:33] === Start keepalived on cp1 again ===
+[2026-11-09 15:32:39] VIP 192.168.122.200 is on cp1
+curl https://hello.soc-mse.local:30443 via 192.168.122.200 -> <h1>Hello SOC-MSE</h1>
+ HTTP=200
+
+[2026-11-09 15:32:39] === Scenario: stop haproxy on cp1 ===
+[2026-11-09 15:32:41] haproxy stopped on cp1
+[2026-11-09 15:32:52] VIP 192.168.122.200 is on cp2
+[2026-11-09 15:32:52] Kubernetes API through the VIP:
+cp3 | CHANGED | rc=0 >>
+https://192.168.122.200:8443
+NAME   STATUS   ROLES           AGE   VERSION
+cp1    Ready    control-plane   27d   v1.37.1
+cp2    Ready    control-plane   27d   v1.37.1
+cp3    Ready    control-plane   27d   v1.37.1
+[2026-11-09 15:32:53] Application through the VIP:
+curl https://hello.soc-mse.local:30443 via 192.168.122.200 -> <h1>Hello SOC-MSE</h1>
+ HTTP=200
+[2026-11-09 15:32:53] === Start haproxy on cp1 again ===
+[2026-11-09 15:33:03] VIP 192.168.122.200 is on cp1
+curl https://hello.soc-mse.local:30443 via 192.168.122.200 -> <h1>Hello SOC-MSE</h1>
+ HTTP=200
+
+[2026-11-09 15:33:03] PASS: the VIP moved to cp2 when keepalived or haproxy stopped on cp1, API and application stayed reachable, and the VIP returned to cp1

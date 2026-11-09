@@ -1,0 +1,44 @@
+# Command: ansible-playbook playbooks/05-install-calico.yml
+# Date:    2026-11-09 14:04:33 +0700
+
+/usr/lib/python3/dist-packages/paramiko/pkey.py:82: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+  "cipher": algorithms.TripleDES,
+/usr/lib/python3/dist-packages/paramiko/transport.py:261: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+  "class": algorithms.TripleDES,
+
+PLAY [Install Calico CNI (traditional manifest method)] ************************
+
+TASK [Create directory for Calico manifest] ************************************
+ok: [cp1]
+
+TASK [Download the traditional calico.yaml file] *******************************
+changed: [cp1]
+
+TASK [Configure Pod CIDR - Uncomment the CALICO_IPV4POOL_CIDR variable] ********
+changed: [cp1]
+
+TASK [Configure Pod CIDR - Update the network range value from config] *********
+changed: [cp1]
+
+TASK [Deploy Calico] ***********************************************************
+changed: [cp1]
+
+TASK [Wait for Calico Node Pods to become Ready] *******************************
+ok: [cp1]
+
+TASK [Get the status of Nodes in the Cluster] **********************************
+ok: [cp1]
+
+TASK [Show Nodes status] *******************************************************
+ok: [cp1] => {
+    "nodes_output.stdout_lines": [
+        "NAME   STATUS   ROLES           AGE   VERSION   INTERNAL-IP       EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION              CONTAINER-RUNTIME",
+        "cp1    Ready    control-plane   27d   v1.37.1   192.168.122.244   <none>        Ubuntu 24.04.4 LTS   6.8.0-146-generic (amd64)   containerd://2.2.1",
+        "cp2    Ready    control-plane   27d   v1.37.1   192.168.122.47    <none>        Ubuntu 24.04.4 LTS   6.8.0-146-generic (amd64)   containerd://2.2.1",
+        "cp3    Ready    control-plane   27d   v1.37.1   192.168.122.76    <none>        Ubuntu 24.04.4 LTS   6.8.0-146-generic (amd64)   containerd://2.2.1"
+    ]
+}
+
+PLAY RECAP *********************************************************************
+cp1                        : ok=8    changed=4    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+

@@ -1,0 +1,138 @@
+# Command: ansible-playbook playbooks/01-configure.yml
+# Date:    2026-11-09 14:02:54 +0700
+
+/usr/lib/python3/dist-packages/paramiko/pkey.py:82: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+  "cipher": algorithms.TripleDES,
+/usr/lib/python3/dist-packages/paramiko/transport.py:261: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+  "class": algorithms.TripleDES,
+[WARNING]: Collection community.general does not support Ansible version
+2.17.14
+
+PLAY [Prepare all Kubernetes control-plane VMs] ********************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [cp1]
+ok: [cp3]
+ok: [cp2]
+
+TASK [Set hostname] ************************************************************
+ok: [cp2]
+ok: [cp1]
+ok: [cp3]
+
+TASK [Configure node name resolution] ******************************************
+ok: [cp3]
+ok: [cp2]
+ok: [cp1]
+
+TASK [Disable swap immediately] ************************************************
+skipping: [cp1]
+skipping: [cp2]
+skipping: [cp3]
+
+TASK [Disable swap permanently in fstab] ***************************************
+ok: [cp2]
+ok: [cp3]
+ok: [cp1]
+
+TASK [Install required packages] ***********************************************
+ok: [cp3]
+ok: [cp2]
+ok: [cp1]
+
+TASK [Load kernel modules at boot] *********************************************
+ok: [cp1]
+ok: [cp3]
+ok: [cp2]
+
+TASK [Load overlay module now] *************************************************
+ok: [cp3]
+ok: [cp2]
+ok: [cp1]
+
+TASK [Load bridge netfilter module now] ****************************************
+ok: [cp1]
+ok: [cp3]
+ok: [cp2]
+
+TASK [Configure Kubernetes networking sysctl] **********************************
+ok: [cp3]
+ok: [cp1]
+ok: [cp2]
+
+TASK [Create containerd configuration directory] *******************************
+ok: [cp3]
+ok: [cp2]
+ok: [cp1]
+
+TASK [Check existing containerd configuration] *********************************
+ok: [cp1]
+ok: [cp3]
+ok: [cp2]
+
+TASK [Generate default containerd configuration] *******************************
+skipping: [cp1]
+skipping: [cp2]
+skipping: [cp3]
+
+TASK [Configure systemd cgroup driver] *****************************************
+ok: [cp2]
+ok: [cp1]
+ok: [cp3]
+
+TASK [Enable and start containerd] *********************************************
+ok: [cp1]
+ok: [cp3]
+ok: [cp2]
+
+TASK [Flush handlers before verification] **************************************
+
+TASK [Flush handlers before verification] **************************************
+
+TASK [Flush handlers before verification] **************************************
+
+TASK [Verify hostname and containerd] ******************************************
+ok: [cp3] => (item=hostname)
+ok: [cp2] => (item=hostname)
+ok: [cp1] => (item=hostname)
+ok: [cp2] => (item=containerd --version)
+ok: [cp3] => (item=containerd --version)
+ok: [cp1] => (item=containerd --version)
+ok: [cp3] => (item=systemctl is-active containerd)
+ok: [cp2] => (item=systemctl is-active containerd)
+ok: [cp1] => (item=systemctl is-active containerd)
+
+TASK [Display verification results] ********************************************
+ok: [cp1] => (item={'changed': False, 'stdout': 'cp1', 'stderr': '', 'rc': 0, 'cmd': ['hostname'], 'start': '2026-11-09 07:03:21.122222', 'end': '2026-11-09 07:03:21.131681', 'delta': '0:00:00.009459', 'msg': '', 'invocation': {'module_args': {'_raw_params': 'hostname', '_uses_shell': False, 'expand_argument_vars': True, 'stdin_add_newline': True, 'strip_empty_ends': True, 'argv': None, 'chdir': None, 'executable': None, 'creates': None, 'removes': None, 'stdin': None}}, 'stdout_lines': ['cp1'], 'stderr_lines': [], 'failed': False, 'item': 'hostname', 'ansible_loop_var': 'item'}) => {
+    "msg": "cp1: cp1"
+}
+ok: [cp1] => (item={'changed': False, 'stdout': 'containerd github.com/containerd/containerd/v2 2.2.1 ', 'stderr': '', 'rc': 0, 'cmd': ['containerd', '--version'], 'start': '2026-11-09 07:03:21.785305', 'end': '2026-11-09 07:03:21.928897', 'delta': '0:00:00.143592', 'msg': '', 'invocation': {'module_args': {'_raw_params': 'containerd --version', '_uses_shell': False, 'expand_argument_vars': True, 'stdin_add_newline': True, 'strip_empty_ends': True, 'argv': None, 'chdir': None, 'executable': None, 'creates': None, 'removes': None, 'stdin': None}}, 'stdout_lines': ['containerd github.com/containerd/containerd/v2 2.2.1 '], 'stderr_lines': [], 'failed': False, 'item': 'containerd --version', 'ansible_loop_var': 'item'}) => {
+    "msg": "cp1: containerd github.com/containerd/containerd/v2 2.2.1 "
+}
+ok: [cp1] => (item={'changed': False, 'stdout': 'active', 'stderr': '', 'rc': 0, 'cmd': ['systemctl', 'is-active', 'containerd'], 'start': '2026-11-09 07:03:22.571657', 'end': '2026-11-09 07:03:22.596450', 'delta': '0:00:00.024793', 'msg': '', 'invocation': {'module_args': {'_raw_params': 'systemctl is-active containerd', '_uses_shell': False, 'expand_argument_vars': True, 'stdin_add_newline': True, 'strip_empty_ends': True, 'argv': None, 'chdir': None, 'executable': None, 'creates': None, 'removes': None, 'stdin': None}}, 'stdout_lines': ['active'], 'stderr_lines': [], 'failed': False, 'item': 'systemctl is-active containerd', 'ansible_loop_var': 'item'}) => {
+    "msg": "cp1: active"
+}
+ok: [cp2] => (item={'changed': False, 'stdout': 'cp2', 'stderr': '', 'rc': 0, 'cmd': ['hostname'], 'start': '2026-11-09 07:03:20.973318', 'end': '2026-11-09 07:03:20.983174', 'delta': '0:00:00.009856', 'msg': '', 'invocation': {'module_args': {'_raw_params': 'hostname', '_uses_shell': False, 'expand_argument_vars': True, 'stdin_add_newline': True, 'strip_empty_ends': True, 'argv': None, 'chdir': None, 'executable': None, 'creates': None, 'removes': None, 'stdin': None}}, 'stdout_lines': ['cp2'], 'stderr_lines': [], 'failed': False, 'item': 'hostname', 'ansible_loop_var': 'item'}) => {
+    "msg": "cp2: cp2"
+}
+ok: [cp2] => (item={'changed': False, 'stdout': 'containerd github.com/containerd/containerd/v2 2.2.1 ', 'stderr': '', 'rc': 0, 'cmd': ['containerd', '--version'], 'start': '2026-11-09 07:03:21.600688', 'end': '2026-11-09 07:03:21.766193', 'delta': '0:00:00.165505', 'msg': '', 'invocation': {'module_args': {'_raw_params': 'containerd --version', '_uses_shell': False, 'expand_argument_vars': True, 'stdin_add_newline': True, 'strip_empty_ends': True, 'argv': None, 'chdir': None, 'executable': None, 'creates': None, 'removes': None, 'stdin': None}}, 'stdout_lines': ['containerd github.com/containerd/containerd/v2 2.2.1 '], 'stderr_lines': [], 'failed': False, 'item': 'containerd --version', 'ansible_loop_var': 'item'}) => {
+    "msg": "cp2: containerd github.com/containerd/containerd/v2 2.2.1 "
+}
+ok: [cp2] => (item={'changed': False, 'stdout': 'active', 'stderr': '', 'rc': 0, 'cmd': ['systemctl', 'is-active', 'containerd'], 'start': '2026-11-09 07:03:22.493914', 'end': '2026-11-09 07:03:22.508536', 'delta': '0:00:00.014622', 'msg': '', 'invocation': {'module_args': {'_raw_params': 'systemctl is-active containerd', '_uses_shell': False, 'expand_argument_vars': True, 'stdin_add_newline': True, 'strip_empty_ends': True, 'argv': None, 'chdir': None, 'executable': None, 'creates': None, 'removes': None, 'stdin': None}}, 'stdout_lines': ['active'], 'stderr_lines': [], 'failed': False, 'item': 'systemctl is-active containerd', 'ansible_loop_var': 'item'}) => {
+    "msg": "cp2: active"
+}
+ok: [cp3] => (item={'changed': False, 'stdout': 'cp3', 'stderr': '', 'rc': 0, 'cmd': ['hostname'], 'start': '2026-11-09 07:03:21.026580', 'end': '2026-11-09 07:03:21.034867', 'delta': '0:00:00.008287', 'msg': '', 'invocation': {'module_args': {'_raw_params': 'hostname', '_uses_shell': False, 'expand_argument_vars': True, 'stdin_add_newline': True, 'strip_empty_ends': True, 'argv': None, 'chdir': None, 'executable': None, 'creates': None, 'removes': None, 'stdin': None}}, 'stdout_lines': ['cp3'], 'stderr_lines': [], 'failed': False, 'item': 'hostname', 'ansible_loop_var': 'item'}) => {
+    "msg": "cp3: cp3"
+}
+ok: [cp3] => (item={'changed': False, 'stdout': 'containerd github.com/containerd/containerd/v2 2.2.1 ', 'stderr': '', 'rc': 0, 'cmd': ['containerd', '--version'], 'start': '2026-11-09 07:03:21.677861', 'end': '2026-11-09 07:03:21.859266', 'delta': '0:00:00.181405', 'msg': '', 'invocation': {'module_args': {'_raw_params': 'containerd --version', '_uses_shell': False, 'expand_argument_vars': True, 'stdin_add_newline': True, 'strip_empty_ends': True, 'argv': None, 'chdir': None, 'executable': None, 'creates': None, 'removes': None, 'stdin': None}}, 'stdout_lines': ['containerd github.com/containerd/containerd/v2 2.2.1 '], 'stderr_lines': [], 'failed': False, 'item': 'containerd --version', 'ansible_loop_var': 'item'}) => {
+    "msg": "cp3: containerd github.com/containerd/containerd/v2 2.2.1 "
+}
+ok: [cp3] => (item={'changed': False, 'stdout': 'active', 'stderr': '', 'rc': 0, 'cmd': ['systemctl', 'is-active', 'containerd'], 'start': '2026-11-09 07:03:22.533261', 'end': '2026-11-09 07:03:22.548025', 'delta': '0:00:00.014764', 'msg': '', 'invocation': {'module_args': {'_raw_params': 'systemctl is-active containerd', '_uses_shell': False, 'expand_argument_vars': True, 'stdin_add_newline': True, 'strip_empty_ends': True, 'argv': None, 'chdir': None, 'executable': None, 'creates': None, 'removes': None, 'stdin': None}}, 'stdout_lines': ['active'], 'stderr_lines': [], 'failed': False, 'item': 'systemctl is-active containerd', 'ansible_loop_var': 'item'}) => {
+    "msg": "cp3: active"
+}
+
+PLAY RECAP *********************************************************************
+cp1                        : ok=15   changed=0    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0   
+cp2                        : ok=15   changed=0    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0   
+cp3                        : ok=15   changed=0    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0   
+

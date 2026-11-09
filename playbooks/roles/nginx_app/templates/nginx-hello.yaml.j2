@@ -1,0 +1,143 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-hello-config
+  namespace: default
+data:
+  index.html: |
+    <h1>Hello SOC-MSE</h1>
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-hello-soc-mse
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx-hello
+  template:
+    metadata:
+      labels:
+        app: nginx-hello
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: html-volume
+          mountPath: /usr/share/nginx/html
+      volumes:
+      - name: html-volume
+        configMap:
+          name: nginx-hello-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-hello-svc
+  namespace: default
+spec:
+  selector:
+    app: nginx-hello
+  ports:
+  - port: 80
+    targetPort: 80
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: selfsigned-issuer
+  namespace: default
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: nginx-hello-cert
+  namespace: default
+spec:
+  secretName: nginx-tls-secret
+  dnsNames:
+    - hello.soc-mse.local
+  issuerRef:
+    name: selfsigned-issuer
+    kind: Issuer
+---
+# Envoy Service settings for this local cluster (no LoadBalancer implementation):
+# - externalTrafficPolicy Cluster: every node answers on the NodePort, so the app is
+#   reachable through any node IP and through the API VIP, not only the node running Envoy
+# - fixed NodePort, so the URL does not change when the Service is recreated
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: nodeport-proxy
+  namespace: envoy-gateway-system
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        externalTrafficPolicy: Cluster
+        patch:
+          type: StrategicMerge
+          value:
+            spec:
+              ports:
+                - port: 443
+                  nodePort: {{ gateway_nodeport }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: eg
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+  parametersRef:
+    group: gateway.envoyproxy.io
+    kind: EnvoyProxy
+    name: nodeport-proxy
+    namespace: envoy-gateway-system
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: https-gateway
+  namespace: default
+spec:
+  gatewayClassName: eg
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: hello.soc-mse.local
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: nginx-tls-secret
+      allowedRoutes:
+        namespaces:
+          from: Same
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: nginx-hello-route
+  namespace: default
+spec:
+  parentRefs:
+  - name: https-gateway
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: nginx-hello-svc
+      port: 80

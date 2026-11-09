@@ -1,0 +1,127 @@
+# Command: ansible-playbook playbooks/07-backup.yml
+# Date:    2026-11-09 13:39:50 +0700
+
+/usr/lib/python3/dist-packages/paramiko/pkey.py:82: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+  "cipher": algorithms.TripleDES,
+/usr/lib/python3/dist-packages/paramiko/transport.py:261: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+  "class": algorithms.TripleDES,
+
+PLAY [Back up etcd snapshot and Kubernetes PKI] ********************************
+
+TASK [etcd_client : Check installed etcdutl version] ***************************
+ok: [cp1]
+ok: [cp3]
+ok: [cp2]
+
+TASK [etcd_client : Download etcd release archive] *****************************
+skipping: [cp1]
+skipping: [cp2]
+skipping: [cp3]
+
+TASK [etcd_client : Extract etcdctl and etcdutl to /usr/local/bin] *************
+skipping: [cp1]
+skipping: [cp2]
+skipping: [cp3]
+
+TASK [Generate one backup timestamp for all nodes] *****************************
+ok: [cp1]
+
+TASK [Set backup directories] **************************************************
+ok: [cp1]
+ok: [cp2]
+ok: [cp3]
+
+TASK [Create remote backup directory] ******************************************
+changed: [cp1]
+changed: [cp3]
+changed: [cp2]
+
+TASK [Take etcd snapshot] ******************************************************
+skipping: [cp2]
+skipping: [cp3]
+changed: [cp1]
+
+TASK [Verify etcd snapshot] ****************************************************
+skipping: [cp2]
+skipping: [cp3]
+ok: [cp1]
+
+TASK [Record cluster state at backup time] *************************************
+skipping: [cp2]
+skipping: [cp3]
+ok: [cp1]
+
+TASK [Save cluster state next to the snapshot] *********************************
+skipping: [cp2]
+skipping: [cp3]
+changed: [cp1]
+
+TASK [Archive /etc/kubernetes/pki] *********************************************
+changed: [cp1]
+changed: [cp3]
+changed: [cp2]
+
+TASK [Generate SHA256 checksums] ***********************************************
+changed: [cp3]
+changed: [cp2]
+changed: [cp1]
+
+TASK [Find backup files] *******************************************************
+ok: [cp1]
+ok: [cp3]
+ok: [cp2]
+
+TASK [Fetch backup files to the control node] **********************************
+changed: [cp3] => (item=pki-cp3.tar.gz)
+changed: [cp2] => (item=pki-cp2.tar.gz)
+changed: [cp3] => (item=SHA256SUMS)
+changed: [cp2] => (item=SHA256SUMS)
+changed: [cp1] => (item=etcd-snapshot.db)
+changed: [cp1] => (item=pki-cp1.tar.gz)
+changed: [cp1] => (item=backup-info.txt)
+changed: [cp1] => (item=SHA256SUMS)
+
+TASK [Restrict permissions of the local backup] ********************************
+changed: [cp1 -> localhost]
+
+TASK [Show etcd snapshot status] ***********************************************
+ok: [cp1] => {
+    "snapshot_status.stdout_lines": [
+        "┌─────────┬────────────┬────────────┬────────────┬─────────┐",
+        "│  HASH   │  REVISION  │ TOTAL KEYS │ TOTAL SIZE │ VERSION │",
+        "├─────────┼────────────┼────────────┼────────────┼─────────┤",
+        "│ a4e3079 │ 5000026529 │       1409 │      19 MB │   3.7.0 │",
+        "└─────────┴────────────┴────────────┴────────────┴─────────┘"
+    ]
+}
+skipping: [cp2]
+skipping: [cp3]
+
+TASK [Show backup location] ****************************************************
+ok: [cp1] => {
+    "msg": [
+        "Remote: cp1:/opt/k8s-backup/20261109-133952",
+        "Local:  /home/lap14611/Documents/PROJECT/k8s_bcp/backup/20261109-133952/cp1",
+        "Files:  backup-info.txt, etcd-snapshot.db, pki-cp1.tar.gz, SHA256SUMS"
+    ]
+}
+ok: [cp2] => {
+    "msg": [
+        "Remote: cp2:/opt/k8s-backup/20261109-133952",
+        "Local:  /home/lap14611/Documents/PROJECT/k8s_bcp/backup/20261109-133952/cp2",
+        "Files:  pki-cp2.tar.gz, SHA256SUMS"
+    ]
+}
+ok: [cp3] => {
+    "msg": [
+        "Remote: cp3:/opt/k8s-backup/20261109-133952",
+        "Local:  /home/lap14611/Documents/PROJECT/k8s_bcp/backup/20261109-133952/cp3",
+        "Files:  pki-cp3.tar.gz, SHA256SUMS"
+    ]
+}
+
+PLAY RECAP *********************************************************************
+cp1                        : ok=15   changed=7    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0   
+cp2                        : ok=8    changed=4    unreachable=0    failed=0    skipped=7    rescued=0    ignored=0   
+cp3                        : ok=8    changed=4    unreachable=0    failed=0    skipped=7    rescued=0    ignored=0   
+

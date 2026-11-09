@@ -1,0 +1,79 @@
+---
+# Simulate an incident: delete the application Deployment before the etcd restore.
+- name: Delete the nginx-hello-soc-mse Deployment
+  hosts: cp1
+  become: true
+  gather_facts: false
+  vars_files:
+    - ../group_vars/all.yml
+
+  tasks:
+    - name: Show application before deletion
+      ansible.builtin.shell: |
+        kubectl --kubeconfig={{ kubeconfig }} get deployment {{ app_deployment }} -n {{ app_namespace }} -o wide
+        kubectl --kubeconfig={{ kubeconfig }} get pods -n {{ app_namespace }} -l {{ app_label }} -o wide
+      register: app_before
+      changed_when: false
+
+    - name: Display application before deletion
+      ansible.builtin.debug:
+        var: app_before.stdout_lines
+
+    - name: Delete Deployment {{ app_deployment }}
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - --kubeconfig={{ kubeconfig }}
+          - delete
+          - deployment
+          - "{{ app_deployment }}"
+          - -n
+          - "{{ app_namespace }}"
+          - --wait=true
+          - --timeout=120s
+      register: delete_result
+      changed_when: "'deleted' in delete_result.stdout"
+      failed_when:
+        - delete_result.rc != 0
+        - "'NotFound' not in delete_result.stderr"
+
+    - name: Wait for application pods to terminate
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - --kubeconfig={{ kubeconfig }}
+          - wait
+          - --for=delete
+          - pods
+          - -n
+          - "{{ app_namespace }}"
+          - -l
+          - "{{ app_label }}"
+          - --timeout=120s
+      register: wait_deleted
+      changed_when: false
+      failed_when:
+        - wait_deleted.rc != 0
+        - "'no matching resources' not in wait_deleted.stderr"
+
+    - name: Confirm Deployment and pods are gone
+      ansible.builtin.shell: |
+        kubectl --kubeconfig={{ kubeconfig }} get deployment {{ app_deployment }} -n {{ app_namespace }} 2>&1
+        kubectl --kubeconfig={{ kubeconfig }} get pods -n {{ app_namespace }} -l {{ app_label }} 2>&1
+      register: app_after
+      changed_when: false
+      failed_when: "'NotFound' not in app_after.stdout"
+
+    - name: Display application after deletion
+      ansible.builtin.debug:
+        var: app_after.stdout_lines
+
+    - name: Check the application through the Gateway
+      ansible.builtin.include_tasks: tasks/curl-gateway.yml
+
+    - name: Confirm the application is no longer served
+      ansible.builtin.assert:
+        that:
+          - app_expected_text not in curl_result.stdout
+        fail_msg: "Gateway still returns '{{ app_expected_text }}' after deleting the Deployment"
+        success_msg: "Application is down as expected"

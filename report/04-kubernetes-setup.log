@@ -1,0 +1,82 @@
+# Command: ansible-playbook playbooks/04-kubernetes-setup.yml
+# Date:    2026-11-09 14:04:20 +0700
+
+/usr/lib/python3/dist-packages/paramiko/pkey.py:82: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+  "cipher": algorithms.TripleDES,
+/usr/lib/python3/dist-packages/paramiko/transport.py:261: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+  "class": algorithms.TripleDES,
+
+PLAY [Initialize first Kubernetes control-plane] *******************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [cp1]
+
+TASK [Check whether Kubernetes is already initialized] *************************
+ok: [cp1]
+
+TASK [Initialize Kubernetes control-plane] *************************************
+skipping: [cp1]
+
+TASK [Create kubeconfig directory for regular user] ****************************
+ok: [cp1]
+
+TASK [Copy admin kubeconfig for regular user] **********************************
+ok: [cp1]
+
+TASK [Verify Kubernetes API responds] ******************************************
+ok: [cp1]
+
+TASK [Show initial cluster nodes] **********************************************
+ok: [cp1] => {
+    "nodes_result.stdout_lines": [
+        "NAME   STATUS   ROLES           AGE   VERSION",
+        "cp1    Ready    control-plane   27d   v1.37.1",
+        "cp2    Ready    control-plane   27d   v1.37.1",
+        "cp3    Ready    control-plane   27d   v1.37.1"
+    ]
+}
+
+TASK [Upload certificates and generate a fresh certificate key] ****************
+ok: [cp1]
+
+TASK [Extract certificate key] *************************************************
+ok: [cp1]
+
+TASK [Generate fresh join command] *********************************************
+ok: [cp1]
+
+TASK [Build the full HA join command] ******************************************
+ok: [cp1]
+
+PLAY [Join cp2 and cp3 to the cluster as Control Planes] ***********************
+
+TASK [Gathering Facts] *********************************************************
+ok: [cp2]
+ok: [cp3]
+
+TASK [Check if node is already joined] *****************************************
+ok: [cp3]
+ok: [cp2]
+
+TASK [Join the Kubernetes cluster] *********************************************
+skipping: [cp2]
+skipping: [cp3]
+
+TASK [Create kubeconfig directory for regular user] ****************************
+ok: [cp3]
+ok: [cp2]
+
+TASK [Copy admin kubeconfig for regular user] **********************************
+ok: [cp3]
+ok: [cp2]
+
+PLAY [Remove control-plane taint from all nodes] *******************************
+
+TASK [Remove node-role.kubernetes.io/control-plane taint] **********************
+ok: [cp1]
+
+PLAY RECAP *********************************************************************
+cp1                        : ok=11   changed=0    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0   
+cp2                        : ok=4    changed=0    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0   
+cp3                        : ok=4    changed=0    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0   
+

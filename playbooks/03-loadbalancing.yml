@@ -1,0 +1,10 @@
+---
+- name: Configure HAProxy and Keepalived for Kubernetes API
+  hosts: control_plane
+  become: true
+  gather_facts: true
+  vars_files:
+    - ../group_vars/all.yml
+  roles:
+    - haproxy
+    - keepalived

@@ -1,0 +1,34 @@
+---
+- name: Install HAProxy
+  ansible.builtin.apt:
+    name: haproxy
+    state: present
+    update_cache: true
+
+- name: Configure HAProxy backend for Kubernetes Control Plane
+  ansible.builtin.template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    group: root
+    mode: "0644"
+    validate: "haproxy -c -f %s"
+  notify: Reload HAProxy
+
+- name: Enable and start HAProxy
+  ansible.builtin.systemd:
+    name: haproxy
+    enabled: true
+    state: started
+
+- name: Apply HAProxy configuration immediately
+  ansible.builtin.meta: flush_handlers
+
+- name: Verify HAProxy service
+  ansible.builtin.command: systemctl is-active haproxy
+  changed_when: false
+  register: haproxy_status
+
+- name: Show HAProxy status
+  ansible.builtin.debug:
+    msg: "HAProxy status: {{ haproxy_status.stdout }}"

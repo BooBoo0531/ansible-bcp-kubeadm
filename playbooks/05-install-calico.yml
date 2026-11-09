@@ -1,0 +1,83 @@
+---
+- name: Install Calico CNI (traditional manifest method)
+  hosts: cp1
+  become: true
+  gather_facts: false
+
+  vars_files:
+    - ../group_vars/all.yml
+
+  vars:
+    calico_version: "v3.33.0"
+    calico_dir: "/opt/calico"
+
+  tasks:
+    - name: Create directory for Calico manifest
+      ansible.builtin.file:
+        path: "{{ calico_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Download the traditional calico.yaml file
+      ansible.builtin.get_url:
+        url: "https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/calico.yaml"
+        dest: "{{ calico_dir }}/calico.yaml"
+        mode: "0644"
+        force: true
+
+    - name: Configure Pod CIDR - Uncomment the CALICO_IPV4POOL_CIDR variable
+      ansible.builtin.replace:
+        path: "{{ calico_dir }}/calico.yaml"
+        regexp: '# - name: CALICO_IPV4POOL_CIDR'
+        replace: '- name: CALICO_IPV4POOL_CIDR'
+
+    - name: Configure Pod CIDR - Update the network range value from config
+      ansible.builtin.replace:
+        path: "{{ calico_dir }}/calico.yaml"
+        regexp: '#   value: "192.168.0.0/16"'
+        replace: '  value: "{{ pod_cidr }}"'
+
+    - name: Deploy Calico
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - --kubeconfig=/etc/kubernetes/admin.conf
+          - apply
+          - -f
+          - "{{ calico_dir }}/calico.yaml"
+      register: calico_apply
+      changed_when: "'created' in calico_apply.stdout or 'configured' in calico_apply.stdout"
+
+    - name: Wait for Calico Node Pods to become Ready
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - --kubeconfig=/etc/kubernetes/admin.conf
+          - wait
+          - --for=condition=Ready
+          - pods
+          - --all
+          - -n
+          - kube-system
+          - -l
+          - k8s-app=calico-node
+          - --timeout=300s
+      changed_when: false
+
+    - name: Get the status of Nodes in the Cluster
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - --kubeconfig=/etc/kubernetes/admin.conf
+          - get
+          - nodes
+          - -o
+          - wide
+      register: nodes_output
+      changed_when: false
+
+    - name: Show Nodes status
+      ansible.builtin.debug:
+        var: nodes_output.stdout_lines

@@ -1,0 +1,30 @@
+---
+# kubeadm runs etcd as a static pod, so etcdctl/etcdutl are not on the host.
+# Install the release binaries matching the etcd server version.
+- name: Check installed etcdutl version
+  ansible.builtin.command: etcdutl version
+  register: etcdutl_check
+  changed_when: false
+  failed_when: false
+
+- name: Install etcdctl and etcdutl {{ etcd_version }}
+  when: etcdutl_check.rc != 0 or (etcd_version | regex_replace('^v', '')) not in etcdutl_check.stdout
+  block:
+    - name: Download etcd release archive
+      ansible.builtin.get_url:
+        url: "https://github.com/etcd-io/etcd/releases/download/{{ etcd_version }}/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
+        dest: "/tmp/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
+        mode: "0644"
+
+    - name: Extract etcdctl and etcdutl to /usr/local/bin
+      ansible.builtin.command:
+        argv:
+          - tar
+          - -xzf
+          - "/tmp/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
+          - -C
+          - /usr/local/bin
+          - --strip-components=1
+          - "etcd-{{ etcd_version }}-linux-amd64/etcdctl"
+          - "etcd-{{ etcd_version }}-linux-amd64/etcdutl"
+      changed_when: true

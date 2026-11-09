@@ -1,0 +1,126 @@
+---
+# PLAY 1: INITIALIZE CP1 AND GET THE JOIN COMMAND
+- name: Initialize first Kubernetes control-plane
+  hosts: cp1
+  become: true
+  gather_facts: true
+  vars_files:
+    - ../group_vars/all.yml
+
+  tasks:
+    - name: Check whether Kubernetes is already initialized
+      ansible.builtin.stat:
+        path: /etc/kubernetes/admin.conf
+      register: admin_conf
+
+    - name: Initialize Kubernetes control-plane
+      ansible.builtin.command:
+        cmd: >-
+          kubeadm init
+          --control-plane-endpoint "{{ control_plane_endpoint }}"
+          --upload-certs
+          --pod-network-cidr "{{ pod_cidr }}"
+          --apiserver-advertise-address "{{ cluster_nodes[0].ip }}"
+          --node-name "{{ inventory_hostname }}"
+      when: not admin_conf.stat.exists
+      register: kubeadm_init
+
+    - name: Create kubeconfig directory for regular user
+      ansible.builtin.file:
+        path: "/home/{{ ansible_user }}/.kube"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0700"
+
+    - name: Copy admin kubeconfig for regular user
+      ansible.builtin.copy:
+        src: /etc/kubernetes/admin.conf
+        dest: "/home/{{ ansible_user }}/.kube/config"
+        remote_src: true
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0600"
+      when: admin_conf.stat.exists or (kubeadm_init is defined and not kubeadm_init.skipped | default(false))
+
+    - name: Verify Kubernetes API responds
+      ansible.builtin.command: kubectl --kubeconfig=/etc/kubernetes/admin.conf get nodes
+      register: nodes_result
+      changed_when: false
+      retries: 12
+      delay: 5
+      until: nodes_result.rc == 0
+
+    - name: Show initial cluster nodes
+      ansible.builtin.debug:
+        var: nodes_result.stdout_lines
+
+    - name: Upload certificates and generate a fresh certificate key
+      ansible.builtin.command: kubeadm init phase upload-certs --upload-certs
+      register: upload_certs_output
+      changed_when: false
+
+    - name: Extract certificate key
+      ansible.builtin.set_fact:
+        certificate_key: "{{ upload_certs_output.stdout_lines[-1] | trim }}"
+
+    - name: Generate fresh join command
+      ansible.builtin.command: kubeadm token create --print-join-command
+      register: join_command_output
+      changed_when: false
+
+    - name: Build the full HA join command
+      ansible.builtin.set_fact:
+        full_join_command: "{{ join_command_output.stdout }} --control-plane --certificate-key {{ certificate_key }}"
+
+
+# PLAY 2: RUN THE JOIN COMMAND ON CP2 AND CP3
+- name: Join cp2 and cp3 to the cluster as Control Planes
+  hosts: cp2, cp3 
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Check if node is already joined
+      ansible.builtin.stat:
+        path: /etc/kubernetes/admin.conf
+      register: admin_conf_join
+
+    - name: Join the Kubernetes cluster
+      # Pull the full_join_command variable from cp1 and run it here
+      ansible.builtin.command: "{{ hostvars['cp1'].full_join_command }}"
+      when: not admin_conf_join.stat.exists
+
+    - name: Create kubeconfig directory for regular user
+      ansible.builtin.file:
+        path: "/home/{{ ansible_user }}/.kube"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0700"
+
+    - name: Copy admin kubeconfig for regular user
+      ansible.builtin.copy:
+        src: /etc/kubernetes/admin.conf
+        dest: "/home/{{ ansible_user }}/.kube/config"
+        remote_src: true
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0600"
+
+# PLAY 3: ALLOW WORKLOADS ON CONTROL-PLANE NODES
+# The cluster has no worker nodes, so the default control-plane taint
+# would leave every application pod Pending
+- name: Remove control-plane taint from all nodes
+  hosts: cp1
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Remove node-role.kubernetes.io/control-plane taint
+      ansible.builtin.command: >-
+        kubectl --kubeconfig=/etc/kubernetes/admin.conf
+        taint nodes --all node-role.kubernetes.io/control-plane-
+      register: untaint_result
+      changed_when: "'untainted' in untaint_result.stdout"
+      failed_when:
+        - untaint_result.rc != 0
+        - "'not found' not in untaint_result.stderr"

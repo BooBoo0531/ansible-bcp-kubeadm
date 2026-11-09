@@ -1,0 +1,209 @@
+# Command: ansible-playbook playbooks/09-restore.yml
+# Date:    2026-11-09 14:15:17 +0700
+
+/usr/lib/python3/dist-packages/paramiko/pkey.py:82: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+  "cipher": algorithms.TripleDES,
+/usr/lib/python3/dist-packages/paramiko/transport.py:261: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+  "class": algorithms.TripleDES,
+
+PLAY [Restore etcd from snapshot on all control-plane nodes] *******************
+
+TASK [Check the selected backup] ***********************************************
+ok: [cp1 -> localhost]
+
+TASK [Fail if the snapshot does not exist] *************************************
+ok: [cp1] => {
+    "changed": false,
+    "msg": "Restoring from backup 20261109-133952"
+}
+
+TASK [Verify snapshot checksum on the control node] ****************************
+ok: [cp1 -> localhost]
+
+TASK [Generate restore timestamp] **********************************************
+ok: [cp1]
+
+TASK [etcd_client : Check installed etcdutl version] ***************************
+ok: [cp1]
+ok: [cp3]
+ok: [cp2]
+
+TASK [etcd_client : Download etcd release archive] *****************************
+skipping: [cp1]
+skipping: [cp2]
+skipping: [cp3]
+
+TASK [etcd_client : Extract etcdctl and etcdutl to /usr/local/bin] *************
+skipping: [cp1]
+skipping: [cp2]
+skipping: [cp3]
+
+TASK [Create restore directory] ************************************************
+ok: [cp1]
+ok: [cp2]
+ok: [cp3]
+
+TASK [Copy snapshot to every control-plane node] *******************************
+changed: [cp1]
+changed: [cp3]
+changed: [cp2]
+
+TASK [Verify snapshot on every node] *******************************************
+ok: [cp1]
+ok: [cp2]
+ok: [cp3]
+
+TASK [Show snapshot to be restored] ********************************************
+ok: [cp1] => {
+    "snapshot_status.stdout_lines": [
+        "┌─────────┬────────────┬────────────┬────────────┬─────────┐",
+        "│  HASH   │  REVISION  │ TOTAL KEYS │ TOTAL SIZE │ VERSION │",
+        "├─────────┼────────────┼────────────┼────────────┼─────────┤",
+        "│ a4e3079 │ 5000026529 │       1409 │      19 MB │   3.7.0 │",
+        "└─────────┴────────────┴────────────┴────────────┴─────────┘"
+    ]
+}
+
+TASK [Create directory for stopped static pod manifests] ***********************
+ok: [cp1]
+ok: [cp2]
+ok: [cp3]
+
+TASK [Stop kube-apiserver, controller-manager, scheduler and etcd] *************
+changed: [cp2] => (item=kube-apiserver)
+changed: [cp1] => (item=kube-apiserver)
+changed: [cp3] => (item=kube-apiserver)
+changed: [cp2] => (item=kube-controller-manager)
+changed: [cp1] => (item=kube-controller-manager)
+changed: [cp3] => (item=kube-controller-manager)
+changed: [cp1] => (item=kube-scheduler)
+changed: [cp2] => (item=kube-scheduler)
+changed: [cp3] => (item=kube-scheduler)
+changed: [cp1] => (item=etcd)
+changed: [cp2] => (item=etcd)
+changed: [cp3] => (item=etcd)
+
+TASK [Wait for control-plane components to stop] *******************************
+ok: [cp1] => (item=6443)
+ok: [cp2] => (item=6443)
+ok: [cp3] => (item=6443)
+ok: [cp1] => (item=10257)
+ok: [cp2] => (item=10257)
+ok: [cp3] => (item=10257)
+ok: [cp1] => (item=10259)
+ok: [cp2] => (item=10259)
+ok: [cp3] => (item=10259)
+ok: [cp1] => (item=2379)
+ok: [cp2] => (item=2379)
+ok: [cp3] => (item=2379)
+
+TASK [Move current etcd data directory aside] **********************************
+changed: [cp1]
+changed: [cp3]
+changed: [cp2]
+
+TASK [Restore etcd data directory from snapshot] *******************************
+changed: [cp1]
+changed: [cp3]
+changed: [cp2]
+
+TASK [Start etcd] **************************************************************
+changed: [cp2]
+changed: [cp3]
+changed: [cp1]
+
+TASK [Restart kubelet so it starts the etcd static pod] ************************
+changed: [cp1]
+changed: [cp3]
+changed: [cp2]
+
+TASK [Wait for etcd client port] ***********************************************
+ok: [cp1]
+ok: [cp2]
+ok: [cp3]
+
+TASK [Wait for the restored etcd cluster to become healthy] ********************
+FAILED - RETRYING: [cp1]: Wait for the restored etcd cluster to become healthy (30 retries left).
+ok: [cp1]
+
+TASK [Start kube-apiserver, controller-manager and scheduler] ******************
+changed: [cp1] => (item=kube-apiserver)
+changed: [cp2] => (item=kube-apiserver)
+changed: [cp3] => (item=kube-apiserver)
+changed: [cp1] => (item=kube-controller-manager)
+changed: [cp3] => (item=kube-controller-manager)
+changed: [cp2] => (item=kube-controller-manager)
+changed: [cp1] => (item=kube-scheduler)
+changed: [cp2] => (item=kube-scheduler)
+changed: [cp3] => (item=kube-scheduler)
+
+TASK [Restart kubelet so it does not keep stale state] *************************
+changed: [cp2]
+changed: [cp3]
+changed: [cp1]
+
+TASK [Wait for the Kubernetes API to be ready] *********************************
+FAILED - RETRYING: [cp2]: Wait for the Kubernetes API to be ready (36 retries left).
+FAILED - RETRYING: [cp1]: Wait for the Kubernetes API to be ready (36 retries left).
+FAILED - RETRYING: [cp3]: Wait for the Kubernetes API to be ready (36 retries left).
+FAILED - RETRYING: [cp1]: Wait for the Kubernetes API to be ready (35 retries left).
+FAILED - RETRYING: [cp2]: Wait for the Kubernetes API to be ready (35 retries left).
+FAILED - RETRYING: [cp3]: Wait for the Kubernetes API to be ready (35 retries left).
+FAILED - RETRYING: [cp2]: Wait for the Kubernetes API to be ready (34 retries left).
+FAILED - RETRYING: [cp1]: Wait for the Kubernetes API to be ready (34 retries left).
+FAILED - RETRYING: [cp3]: Wait for the Kubernetes API to be ready (34 retries left).
+ok: [cp3]
+ok: [cp2]
+ok: [cp1]
+
+TASK [Restart kube-proxy, calico-node and CoreDNS so they reload the restored state] ***
+changed: [cp1] => (item=daemonset/kube-proxy)
+changed: [cp1] => (item=daemonset/calico-node)
+changed: [cp1] => (item=deployment/coredns)
+
+TASK [Collect etcd and cluster status after restore] ***************************
+ok: [cp1]
+
+TASK [Show status after restore] ***********************************************
+ok: [cp1] => {
+    "restore_status.stdout_lines": [
+        "## etcd endpoint health",
+        "┌──────────────────────────────┬────────┬─────────────┬───────┐",
+        "│           ENDPOINT           │ HEALTH │    TOOK     │ ERROR │",
+        "├──────────────────────────────┼────────┼─────────────┼───────┤",
+        "│ https://192.168.122.244:2379 │   true │ 16.828687ms │       │",
+        "│  https://192.168.122.76:2379 │   true │ 17.205548ms │       │",
+        "│  https://192.168.122.47:2379 │   true │ 23.318831ms │       │",
+        "└──────────────────────────────┴────────┴─────────────┴───────┘",
+        "",
+        "## etcd endpoint status",
+        "┌──────────────────────────────┬──────────────────┬─────────┬─────────────────┬─────────┬────────┬───────────────────────┬────────┬───────────┬────────────┬───────────┬────────────┬────────────────────┬────────┬──────────────────────────┬───────────────────┐",
+        "│           ENDPOINT           │        ID        │ VERSION │ STORAGE VERSION │ DB SIZE │ IN USE │ PERCENTAGE NOT IN USE │ QUOTA  │ IS LEADER │ IS LEARNER │ RAFT TERM │ RAFT INDEX │ RAFT APPLIED INDEX │ ERRORS │ DOWNGRADE TARGET VERSION │ DOWNGRADE ENABLED │",
+        "├──────────────────────────────┼──────────────────┼─────────┼─────────────────┼─────────┼────────┼───────────────────────┼────────┼───────────┼────────────┼───────────┼────────────┼────────────────────┼────────┼──────────────────────────┼───────────────────┤",
+        "│  https://192.168.122.47:2379 │ b5d6fa33e9edfc18 │   3.7.0 │           3.7.0 │   19 MB │  10 MB │                   47% │ 2.1 GB │     false │      false │         2 │       1247 │               1247 │        │                          │             false │",
+        "│  https://192.168.122.76:2379 │ ba6accdd4d6eb3a1 │   3.7.0 │           3.7.0 │   19 MB │  10 MB │                   47% │ 2.1 GB │     false │      false │         2 │       1247 │               1247 │        │                          │             false │",
+        "│ https://192.168.122.244:2379 │ d75eff2c5958cc4d │   3.7.0 │           3.7.0 │   19 MB │  10 MB │                   47% │ 2.1 GB │      true │      false │         2 │       1247 │               1247 │        │                          │             false │",
+        "└──────────────────────────────┴──────────────────┴─────────┴─────────────────┴─────────┴────────┴───────────────────────┴────────┴───────────┴────────────┴───────────┴────────────┴────────────────────┴────────┴──────────────────────────┴───────────────────┘",
+        "",
+        "## etcd members",
+        "┌──────────────────┬─────────┬──────┬──────────────────────────────┬──────────────────────────────┬────────────┐",
+        "│        ID        │ STATUS  │ NAME │          PEER ADDRS          │         CLIENT ADDRS         │ IS LEARNER │",
+        "├──────────────────┼─────────┼──────┼──────────────────────────────┼──────────────────────────────┼────────────┤",
+        "│ b5d6fa33e9edfc18 │ started │  cp2 │  https://192.168.122.47:2380 │  https://192.168.122.47:2379 │      false │",
+        "│ ba6accdd4d6eb3a1 │ started │  cp3 │  https://192.168.122.76:2380 │  https://192.168.122.76:2379 │      false │",
+        "│ d75eff2c5958cc4d │ started │  cp1 │ https://192.168.122.244:2380 │ https://192.168.122.244:2379 │      false │",
+        "└──────────────────┴─────────┴──────┴──────────────────────────────┴──────────────────────────────┴────────────┘",
+        "",
+        "## Nodes",
+        "NAME   STATUS   ROLES           AGE   VERSION   INTERNAL-IP       EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION              CONTAINER-RUNTIME",
+        "cp1    Ready    control-plane   27d   v1.37.1   192.168.122.244   <none>        Ubuntu 24.04.4 LTS   6.8.0-146-generic (amd64)   containerd://2.2.1",
+        "cp2    Ready    control-plane   27d   v1.37.1   192.168.122.47    <none>        Ubuntu 24.04.4 LTS   6.8.0-146-generic (amd64)   containerd://2.2.1",
+        "cp3    Ready    control-plane   27d   v1.37.1   192.168.122.76    <none>        Ubuntu 24.04.4 LTS   6.8.0-146-generic (amd64)   containerd://2.2.1"
+    ]
+}
+
+PLAY RECAP *********************************************************************
+cp1                        : ok=24   changed=9    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0   
+cp2                        : ok=15   changed=8    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0   
+cp3                        : ok=15   changed=8    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0   
+

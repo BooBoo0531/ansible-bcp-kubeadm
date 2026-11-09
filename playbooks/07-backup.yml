@@ -1,0 +1,137 @@
+---
+# Back up the etcd snapshot (taken on cp1) and /etc/kubernetes/pki (from every
+# control-plane node) into <backup_remote_dir>/<timestamp>/ on each node, then
+# fetch everything to backup/<timestamp>/<node>/ on the Ansible control node.
+- name: Back up etcd snapshot and Kubernetes PKI
+  hosts: control_plane
+  become: true
+  gather_facts: false
+  vars_files:
+    - ../group_vars/all.yml
+
+  roles:
+    - etcd_client
+
+  tasks:
+    - name: Generate one backup timestamp for all nodes
+      ansible.builtin.set_fact:
+        backup_ts: "{{ lookup('ansible.builtin.pipe', 'date +%Y%m%d-%H%M%S') }}"
+      run_once: true
+
+    - name: Set backup directories
+      ansible.builtin.set_fact:
+        backup_dir_remote: "{{ backup_remote_dir }}/{{ backup_ts }}"
+        backup_dir_local: "{{ backup_local_dir }}/{{ backup_ts }}/{{ inventory_hostname }}"
+
+    - name: Create remote backup directory
+      ansible.builtin.file:
+        path: "{{ backup_dir_remote }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+
+    - name: Take etcd snapshot
+      ansible.builtin.command:
+        argv:
+          - etcdctl
+          - snapshot
+          - save
+          - "{{ backup_dir_remote }}/etcd-snapshot.db"
+      environment: "{{ etcdctl_env }}"
+      register: snapshot_save
+      changed_when: true
+      when: inventory_hostname == 'cp1'
+
+    - name: Verify etcd snapshot
+      ansible.builtin.command:
+        argv:
+          - etcdutl
+          - snapshot
+          - status
+          - "{{ backup_dir_remote }}/etcd-snapshot.db"
+          - -w
+          - table
+      register: snapshot_status
+      changed_when: false
+      when: inventory_hostname == 'cp1'
+
+    - name: Record cluster state at backup time
+      ansible.builtin.shell: |
+        set -o pipefail
+        echo "Backup timestamp: {{ backup_ts }}"
+        echo
+        echo "## etcd snapshot status"
+        etcdutl snapshot status {{ backup_dir_remote }}/etcd-snapshot.db -w table
+        echo
+        echo "## etcd members"
+        etcdctl member list -w table
+        echo
+        echo "## Application"
+        kubectl --kubeconfig={{ kubeconfig }} get deployment {{ app_deployment }} -n {{ app_namespace }} -o wide
+        kubectl --kubeconfig={{ kubeconfig }} get pods -n {{ app_namespace }} -l {{ app_label }} -o wide
+      args:
+        executable: /bin/bash
+      environment: "{{ etcdctl_env }}"
+      register: backup_info
+      changed_when: false
+      when: inventory_hostname == 'cp1'
+
+    - name: Save cluster state next to the snapshot
+      ansible.builtin.copy:
+        content: "{{ backup_info.stdout }}\n"
+        dest: "{{ backup_dir_remote }}/backup-info.txt"
+        mode: "0600"
+      when: inventory_hostname == 'cp1'
+
+    - name: Archive /etc/kubernetes/pki
+      ansible.builtin.command:
+        argv:
+          - tar
+          - -czf
+          - "{{ backup_dir_remote }}/pki-{{ inventory_hostname }}.tar.gz"
+          - -C
+          - /etc/kubernetes
+          - pki
+      changed_when: true
+
+    - name: Generate SHA256 checksums
+      ansible.builtin.shell: find . -maxdepth 1 -type f ! -name SHA256SUMS -printf '%f\n' | sort | xargs sha256sum > SHA256SUMS
+      args:
+        chdir: "{{ backup_dir_remote }}"
+      changed_when: true
+
+    - name: Find backup files
+      ansible.builtin.find:
+        paths: "{{ backup_dir_remote }}"
+      register: backup_files
+
+    - name: Fetch backup files to the control node
+      ansible.builtin.fetch:
+        src: "{{ item.path }}"
+        dest: "{{ backup_dir_local }}/"
+        flat: true
+      loop: "{{ backup_files.files }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
+
+    - name: Restrict permissions of the local backup
+      ansible.builtin.file:
+        path: "{{ backup_local_dir }}/{{ backup_ts }}"
+        mode: u=rwX,g=,o=
+        recurse: true
+      delegate_to: localhost
+      become: false
+      run_once: true
+
+    - name: Show etcd snapshot status
+      ansible.builtin.debug:
+        var: snapshot_status.stdout_lines
+      when: inventory_hostname == 'cp1'
+
+    - name: Show backup location
+      ansible.builtin.debug:
+        msg:
+          - "Remote: {{ inventory_hostname }}:{{ backup_dir_remote }}"
+          - "Local:  {{ backup_dir_local | realpath }}"
+          - "Files:  {{ backup_files.files | map(attribute='path') | map('basename') | sort | join(', ') }}"

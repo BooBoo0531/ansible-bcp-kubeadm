@@ -1,0 +1,84 @@
+# Command: ansible-playbook playbooks/10-verify.yml
+# Date:    2026-11-09 14:20:03 +0700
+
+/usr/lib/python3/dist-packages/paramiko/pkey.py:82: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+  "cipher": algorithms.TripleDES,
+/usr/lib/python3/dist-packages/paramiko/transport.py:261: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+  "class": algorithms.TripleDES,
+
+PLAY [Verify application after etcd restore] ***********************************
+
+TASK [Wait for Deployment nginx-hello-soc-mse to exist] ************************
+ok: [cp1]
+
+TASK [Wait for Deployment rollout to complete] *********************************
+ok: [cp1]
+
+TASK [Check the application through the Gateway] *******************************
+included: /home/lap14611/Documents/PROJECT/k8s_bcp/playbooks/tasks/curl-gateway.yml for cp1
+
+TASK [Curl https://hello.soc-mse.local through the Gateway] ********************
+ok: [cp1]
+
+TASK [Show curl result] ********************************************************
+ok: [cp1] => {
+    "msg": [
+        "curl -k --resolve hello.soc-mse.local:30443:192.168.122.200 https://hello.soc-mse.local:30443/",
+        [
+            "<h1>Hello SOC-MSE</h1>",
+            "",
+            "HTTP_CODE=200"
+        ]
+    ]
+}
+
+TASK [Get Deployment ready replicas] *******************************************
+ok: [cp1]
+
+TASK [Get Running application pods] ********************************************
+ok: [cp1]
+
+TASK [Collect application resources] *******************************************
+ok: [cp1]
+
+TASK [Show application resources] **********************************************
+ok: [cp1] => {
+    "app_resources.stdout_lines": [
+        "NAME                                  READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES         SELECTOR",
+        "deployment.apps/nginx-hello-soc-mse   2/2     2            2           27d   nginx        nginx:alpine   app=nginx-hello",
+        "",
+        "NAME                                             DESIRED   CURRENT   READY   AGE   CONTAINERS   IMAGES         SELECTOR",
+        "replicaset.apps/nginx-hello-soc-mse-5fd7f58569   2         2         2       27d   nginx        nginx:alpine   app=nginx-hello,pod-template-hash=5fd7f58569",
+        "",
+        "NAME                                       READY   STATUS    RESTARTS      AGE   IP             NODE   NOMINATED NODE   READINESS GATES",
+        "pod/nginx-hello-soc-mse-5fd7f58569-d6tfr   1/1     Running   4 (44m ago)   27d   10.10.121.73   cp2    <none>           <none>",
+        "pod/nginx-hello-soc-mse-5fd7f58569-z8tdd   1/1     Running   4 (44m ago)   27d   10.10.155.9    cp3    <none>           <none>",
+        "",
+        "NAME                      TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE   SELECTOR",
+        "service/kubernetes        ClusterIP   10.96.0.1    <none>        443/TCP   27d   <none>",
+        "service/nginx-hello-svc   ClusterIP   10.97.6.53   <none>        80/TCP    27d   app=nginx-hello",
+        "",
+        "NAME                           DATA   AGE",
+        "configmap/kube-root-ca.crt     1      27d",
+        "configmap/nginx-hello-config   1      27d",
+        "",
+        "NAME                                           READY   SECRET             ISSUER              STATUS                                          AGE",
+        "certificate.cert-manager.io/nginx-hello-cert   True    nginx-tls-secret   selfsigned-issuer   Certificate is up to date and has not expired   27d",
+        "",
+        "NAME                                              CLASS   ADDRESS   PROGRAMMED   AGE",
+        "gateway.gateway.networking.k8s.io/https-gateway   eg                False        27d",
+        "",
+        "NAME                                                    HOSTNAMES   AGE",
+        "httproute.gateway.networking.k8s.io/nginx-hello-route               27d"
+    ]
+}
+
+TASK [Verify Deployment, pods and HTTP response] *******************************
+ok: [cp1] => {
+    "changed": false,
+    "msg": "PASS: Deployment nginx-hello-soc-mse exists, 2 pods Running, curl returned 'Hello SOC-MSE'"
+}
+
+PLAY RECAP *********************************************************************
+cp1                        : ok=10   changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+

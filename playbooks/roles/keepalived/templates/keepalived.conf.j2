@@ -1,0 +1,41 @@
+global_defs {
+    router_id LVS_DEVEL
+}
+
+vrrp_script check_haproxy {
+    script "/etc/keepalived/check_haproxy.sh"
+    interval 3
+    weight -2
+    fall 2
+    rise 2
+}
+
+vrrp_instance VI_1 {
+    {% if inventory_hostname == cluster_nodes[0].name %}
+    state MASTER
+    priority 100
+    {% elif inventory_hostname == cluster_nodes[1].name %}
+    state BACKUP
+    priority 99
+    {% else %}
+    state BACKUP
+    priority 98
+    {% endif %}
+    
+    interface {{ vip_interface }}
+    virtual_router_id 51
+    advert_int 1
+    
+    authentication {
+        auth_type PASS
+        auth_pass K8S_SECRET_PASS
+    }
+    
+    virtual_ipaddress {
+        {{ vip_address }}
+    }
+    
+    track_script {
+        check_haproxy
+    }
+}

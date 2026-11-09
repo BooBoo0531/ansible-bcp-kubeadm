@@ -1,0 +1,69 @@
+# Command: ansible-playbook playbooks/08-delete-app.yml
+# Date:    2026-10-13 15:35:47 +0700
+
+
+PLAY [Delete the nginx-hello-soc-mse Deployment] *******************************
+
+TASK [Show application before deletion] ****************************************
+ok: [cp1]
+
+TASK [Display application before deletion] *************************************
+ok: [cp1] => {
+    "app_before.stdout_lines": [
+        "NAME                  READY   UP-TO-DATE   AVAILABLE   AGE     CONTAINERS   IMAGES         SELECTOR",
+        "nginx-hello-soc-mse   2/2     2            2           4h20m   nginx        nginx:alpine   app=nginx-hello",
+        "NAME                                   READY   STATUS    RESTARTS      AGE     IP             NODE   NOMINATED NODE   READINESS GATES",
+        "nginx-hello-soc-mse-5fd7f58569-d6tfr   1/1     Running   3 (66m ago)   4h20m   10.10.121.71   cp2    <none>           <none>",
+        "nginx-hello-soc-mse-5fd7f58569-z8tdd   1/1     Running   3 (66m ago)   4h20m   10.10.155.6    cp3    <none>           <none>"
+    ]
+}
+
+TASK [Delete Deployment nginx-hello-soc-mse] ***********************************
+changed: [cp1]
+
+TASK [Wait for application pods to terminate] **********************************
+ok: [cp1]
+
+TASK [Confirm Deployment and pods are gone] ************************************
+ok: [cp1]
+
+TASK [Display application after deletion] **************************************
+ok: [cp1] => {
+    "app_after.stdout_lines": [
+        "Error from server (NotFound): deployments.apps \"nginx-hello-soc-mse\" not found",
+        "No resources found in default namespace."
+    ]
+}
+
+TASK [Check the application through the Gateway] *******************************
+included: /home/lap14611/Documents/PROJECT/k8s_bcp/playbooks/tasks/curl-gateway.yml for cp1
+
+TASK [Find the Envoy Gateway NodePort] *****************************************
+ok: [cp1]
+
+TASK [Find the node running the Envoy proxy pod] *******************************
+ok: [cp1]
+
+TASK [Curl https://hello.soc-mse.local through the Gateway] ********************
+ok: [cp1]
+
+TASK [Show curl result] ********************************************************
+ok: [cp1] => {
+    "msg": [
+        "curl -k --resolve hello.soc-mse.local:30991:192.168.122.76 https://hello.soc-mse.local:30991/",
+        [
+            "",
+            "HTTP_CODE=503"
+        ]
+    ]
+}
+
+TASK [Confirm the application is no longer served] *****************************
+ok: [cp1] => {
+    "changed": false,
+    "msg": "Application is down as expected"
+}
+
+PLAY RECAP *********************************************************************
+cp1                        : ok=12   changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+

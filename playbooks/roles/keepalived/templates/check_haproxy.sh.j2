@@ -1,0 +1,7 @@
+#!/bin/bash
+# Keepalived health check: fail when HAProxy is not running on this node,
+# so the VIP moves to a node with a working API load balancer.
+if ! systemctl is-active --quiet haproxy; then
+    exit 1
+fi
+exit 0

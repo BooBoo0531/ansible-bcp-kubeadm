@@ -1,0 +1,34 @@
+[2026-11-09 15:26:08] === HTTPS request through the VIP and each node ===
+VIP  192.168.122.200  <h1>Hello SOC-MSE</h1>
+ HTTP=200
+cp1  192.168.122.244  <h1>Hello SOC-MSE</h1>
+ HTTP=200
+cp2  192.168.122.47   <h1>Hello SOC-MSE</h1>
+ HTTP=200
+cp3  192.168.122.76   <h1>Hello SOC-MSE</h1>
+ HTTP=200
+
+[2026-11-09 15:26:08] === TLS handshake (curl -v) ===
+* SSL connection using TLSv1.3 / TLS_AES_256_GCM_SHA384
+*  subject: [NONE]
+*  start date: Oct 13 04:15:28 2026 GMT
+*  expire date: Jan 11 04:15:28 2027 GMT
+< HTTP/2 200 
+
+[2026-11-09 15:26:08] === Certificate presented by the Gateway ===
+subject=
+issuer=
+X509v3 Subject Alternative Name: critical
+    DNS:hello.soc-mse.local
+notBefore=Oct 13 04:15:28 2026 GMT
+notAfter=Jan 11 04:15:28 2027 GMT
+
+[2026-11-09 15:26:08] === Page content in ConfigMap nginx-hello-config ===
+cp1 | CHANGED | rc=0 >>
+<h1>Hello SOC-MSE</h1>
+
+[2026-11-09 15:26:10] === Requests the Gateway rejects ===
+plain HTTP (no TLS)          -> curl exit 56 (connection reset expected)
+HTTPS without the hostname   -> curl exit 35 (no SNI match, connection reset expected)
+
+[2026-11-09 15:26:10] PASS: Hello SOC-MSE over HTTPS through the VIP and all 3 nodes

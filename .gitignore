@@ -1,0 +1,5 @@
+# Backups contain the cluster CA/private keys and an etcd snapshot with every Secret
+backup/*
+!backup/.gitkeep
+
+*.retry
